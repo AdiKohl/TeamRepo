@@ -71,6 +71,10 @@ void Cpu_OnNMIINT(void)
 void TI1_OnInterrupt(void)
 {
   /* Write your code here ... */
+#if PL_CONFIG_HAS_TIMER
+	TMR_OnInterrupt();
+#endif
+
 }
 
 /* END Events */

@@ -30,12 +30,13 @@
 /* Including needed modules to compile this module/procedure */
 #include "Cpu.h"
 #include "Events.h"
-#include "LEDPin1.h"
-#include "BitIoLdd1.h"
-#include "LEDPin2.h"
-#include "BitIoLdd2.h"
+//#include "BitIoLdd1.h"
+//#include "LEDPin2.h"
+//#include "BitIoLdd2.h"
 #include "SW1.h"
 #include "BitIoLdd3.h"
+#include "TI1.h"
+#include "TimerIntLdd1.h"
 #include "CLS1.h"
 #include "RTT1.h"
 #include "LED_IR.h"
@@ -85,6 +86,11 @@
 #include "MCUC1.h"
 #include "ADC_Bat.h"
 #include "TmDt1.h"
+#include "LEDPin1.h"
+#include "BitIoLdd1.h"
+#include "LEDPin2.h"
+#include "BitIoLdd2.h"
+#include "TU2.h"
 #include "IFsh1.h"
 #include "IntFlashLdd1.h"
 #include "BUZ1.h"
@@ -125,6 +131,7 @@ int main(void)
     __asm("nop");
   }
 #endif
+
   APP_Start();
   /*** Don't write any code pass this line, or it will be deleted during code generation. ***/
   /*** RTOS startup code. Macro PEX_RTOS_START is defined by the RTOS component. DON'T MODIFY THIS CODE!!! ***/

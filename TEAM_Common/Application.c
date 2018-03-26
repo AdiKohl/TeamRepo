@@ -90,11 +90,13 @@ void APP_EventHandler(EVNT_Handle event) {
       LED1_Off();
     }
   case EVNT_LED_HEARTBEAT:
+    LED1_Neg();
     LED2_Neg();
     break;
 #if PL_CONFIG_NOF_KEYS>=1
   case EVNT_SW1_PRESSED:
     BtnMsg(1, "pressed");
+    LED1_Neg();
      break;
 #endif
     default:
@@ -181,9 +183,31 @@ static void APP_AdoptToHardware(void) {
 
 void APP_Start(void) {
   PL_Init();
+  KEY_Init();
   APP_AdoptToHardware();
   __asm volatile("cpsie i"); /* enable interrupts */
+
+
+
   for(;;) {
+
+#if 0
+	  LED2_Off();
+	  LED1_On();
+	  WAIT1_Waitms(100);
+	  LED1_Off();
+	  LED2_On();
+	  WAIT1_Waitms(100);
+
+#endif
+	  KEY_Scan();
+	  EVNT_HandleEvent(APP_EventHandler,TRUE); //Call Event Handler
+
+
+
+
+
+
   }
 }
 
