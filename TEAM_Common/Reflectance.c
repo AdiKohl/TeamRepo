@@ -23,6 +23,8 @@
 #include "Application.h"
 #include "Event.h"
 #include "Shell.h"
+#include "TMOUT1.h"
+#include "Timer.h"
 #if PL_CONFIG_HAS_BUZZER
   #include "Buzzer.h"
 #endif
@@ -51,6 +53,7 @@ typedef enum {
 static volatile RefStateType refState = REF_STATE_INIT; /* state machine state */
 
 static LDD_TDeviceData *timerHandle;
+static TMOUT1_CounterHandle timeout;
 
 typedef struct SensorFctType_ {
   void (*SetOutput)(void);
@@ -136,6 +139,7 @@ void REF_CalibrateStartStop(void) {
  * \param raw Array to store the raw values.
  * \return ERR_OVERFLOW if there is a timeout, ERR_OK otherwise
  */
+#if 0
 static void REF_MeasureRaw(SensorTimeType raw[REF_NOF_SENSORS]) {
   uint8_t cnt; /* number of sensor */
   uint8_t i;
@@ -144,20 +148,82 @@ static void REF_MeasureRaw(SensorTimeType raw[REF_NOF_SENSORS]) {
 
   LED_IR_On(); /* IR LED's on */
   WAIT1_Waitus(200);
+
   taskENTER_CRITICAL();
   for(i=0;i<REF_NOF_SENSORS;i++) {
     SensorFctArray[i].SetOutput(); /* turn I/O line as output */
     SensorFctArray[i].SetVal(); /* put high */
     raw[i] = MAX_SENSOR_VALUE;
   }
+  //taskEXIT_CRITICAL();
+  WAIT1_Waitus(20); /* give at least 10 us to charge the capacitor */
+
+  //taskENTER_CRITICAL();
+  for(i=0;i<REF_NOF_SENSORS;i++) {
+    SensorFctArray[i].SetInput(); /* turn I/O line as input */
+  }
+  (void)RefCnt_ResetCounter(timerHandle); /* reset timer counter */
+  timeout = TMOUT1_GetCounter(TMR_TICK_MS * 0.8);
+  do {
+    timerVal = RefCnt_GetCounterValue(timerHandle);
+    bool expired = TMOUT1_CounterExpired(timeout);
+    if(expired){
+    	break;
+    }
+    cnt = 0;
+    for(i=0;i<REF_NOF_SENSORS;i++) {
+      if (raw[i]==MAX_SENSOR_VALUE) { /* not measured yet? */
+        if (SensorFctArray[i].GetVal()==0) {
+          raw[i] = (uint16_t)timerVal;
+        }
+      } else { /* have value */
+        cnt++;
+      }
+    }
+    /*
+    if(timerVal>0xFFEE){
+    	for(i=0;i<REF_NOF_SENSORS;i++){
+    		raw[i] = 0xFFEE;
+    	}
+    	break;
+    }*/
+  } while(cnt!=REF_NOF_SENSORS);
+  TMOUT1_LeaveCounter(timeout);
+  taskEXIT_CRITICAL();
+  LED_IR_Off(); /* IR LED's off */
+}
+#endif
+
+static void REF_MeasureRaw(SensorTimeType raw[REF_NOF_SENSORS]) {
+  uint8_t cnt; /* number of sensor */
+  uint8_t i;
+  bool isTimeout = FALSE;
+  RefCnt_TValueType timerVal;
+  #define REF_SENSOR_TIMEOUT_US   800
+  #define REF_TIMEOUT_TICKS       ((RefCnt_CNT_INP_FREQ_U_0/1000)*REF_SENSOR_TIMEOUT_US)/1000 /* REF_SENSOR_TIMEOUT_US translated into timeout ticks */
+  RefCnt_TValueType timeoutCntVal = REF_TIMEOUT_TICKS;
+  /*! \todo Consider reentrancy and mutual exclusion! */
+
+  LED_IR_On(); /* IR LED's on */
+  WAIT1_Waitus(200);
+  for(i=0;i<REF_NOF_SENSORS;i++) {
+    SensorFctArray[i].SetOutput(); /* turn I/O line as output */
+    SensorFctArray[i].SetVal(); /* put high */
+    raw[i] = MAX_SENSOR_VALUE;
+  }
   WAIT1_Waitus(50); /* give at least 10 us to charge the capacitor */
+  taskENTER_CRITICAL();
   for(i=0;i<REF_NOF_SENSORS;i++) {
     SensorFctArray[i].SetInput(); /* turn I/O line as input */
   }
   (void)RefCnt_ResetCounter(timerHandle); /* reset timer counter */
   do {
-    timerVal = RefCnt_GetCounterValue(timerHandle);
     cnt = 0;
+    timerVal = RefCnt_GetCounterValue(timerHandle);
+    if (timerVal>timeoutCntVal) {
+      isTimeout = TRUE;
+      break; /* get out of while loop */
+    }
     for(i=0;i<REF_NOF_SENSORS;i++) {
       if (raw[i]==MAX_SENSOR_VALUE) { /* not measured yet? */
         if (SensorFctArray[i].GetVal()==0) {
@@ -170,6 +236,19 @@ static void REF_MeasureRaw(SensorTimeType raw[REF_NOF_SENSORS]) {
   } while(cnt!=REF_NOF_SENSORS);
   taskEXIT_CRITICAL();
   LED_IR_Off(); /* IR LED's off */
+#if 0
+  if (isTimeout) {
+    for(i=0;i<REF_NOF_SENSORS;i++) {
+      if (raw[i]==MAX_SENSOR_VALUE && REF_IsCalibrated()) { /* not measured yet? */
+          raw[i] = SensorCalibMinMax.maxVal[i]; /* use calibrated max value */
+      } else {
+        raw[i] = timeoutCntVal; /* set to timeout value */
+      }
+    } /* for */
+  } /* if */
+#else
+//  return ERR_OK;
+#endif
 }
 
 static void REF_CalibrateMinMax(SensorTimeType min[REF_NOF_SENSORS], SensorTimeType max[REF_NOF_SENSORS], SensorTimeType raw[REF_NOF_SENSORS]) {
@@ -596,7 +675,7 @@ void REF_Init(void) {
   refState = REF_STATE_INIT;
   timerHandle = RefCnt_Init(NULL);
   /*! \todo You might need to adjust priority or other task settings */
-  if (xTaskCreate(ReflTask, "Refl", 600/sizeof(StackType_t), NULL, tskIDLE_PRIORITY, NULL) != pdPASS) {
+  if (xTaskCreate(ReflTask, "Refl", 600/sizeof(StackType_t), NULL, tskIDLE_PRIORITY+1, NULL) != pdPASS) {
     for(;;){} /* error */
   }
 }

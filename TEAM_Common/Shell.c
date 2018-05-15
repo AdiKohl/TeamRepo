@@ -90,11 +90,11 @@
 #endif
 
 #if CLS1_DEFAULT_SERIAL
-  #error "Default is RTT. Disable any Shell default connection in the component properties, as we are setting it a runtime!"
+#error  "Default is RTT. Disable any Shell default connection in the component properties, as we are setting it a runtime!"
 #endif
-#define SHELL_CONFIG_HAS_SHELL_UART  (0 && !PL_CONFIG_BOARD_IS_ROBO_V1) /* use AsynchroSerial, V1 uses the Bluetooth on the UART */
+#define SHELL_CONFIG_HAS_SHELL_UART  (1 && !PL_CONFIG_BOARD_IS_ROBO_V1) /* use AsynchroSerial, V1 uses the Bluetooth on the UART */
 #define SHELL_CONFIG_HAS_SHELL_RTT   (1 && PL_CONFIG_HAS_SEGGER_RTT) /* use SEGGER RTT */
-#define SHELL_CONFIG_HAS_SHELL_CDC   (1 && PL_CONFIG_HAS_USB_CDC) /* use USB CDC */
+#define SHELL_CONFIG_HAS_SHELL_CDC   (0 && PL_CONFIG_HAS_USB_CDC) /* use USB CDC */
 
 #if SHELL_CONFIG_HAS_SHELL_UART
  /* ******************************************************************
@@ -382,10 +382,25 @@ static void ShellTask(void *pvParameters) {
 #if PL_CONFIG_HAS_SHELL_QUEUE && PL_CONFIG_SQUEUE_SINGLE_CHAR
     {
         /*! \todo Handle shell queue */
+    	//SHELL_SendChar(SQUEUE_ReceiveChar());
+    	 /*! \todo Handle shell queue */
+    	      unsigned char ch;
+
+    	      while((ch=SQUEUE_ReceiveChar()) && ch!='\0') {
+    	        ios[0].stdio->stdOut(ch); /* output on first channel */
+    	      }
     }
 #elif PL_CONFIG_HAS_SHELL_QUEUE /* !PL_CONFIG_SQUEUE_SINGLE_CHAR */
     {
       /*! \todo Handle shell queue */
+    	const unsigned char *msg;
+
+    	      msg = SQUEUE_ReceiveMessage();
+    	      if (msg!=NULL) {
+    	        CLS1_SendStr(msg, SHELL_GetStdio()->stdOut);
+    	        vPortFree((void*)msg);
+    	      }
+
    }
 #endif /* PL_CONFIG_HAS_SHELL_QUEUE */
     vTaskDelay(pdMS_TO_TICKS(10));

@@ -163,6 +163,7 @@ static void PID_LineCfg(uint16_t currLine, uint16_t setLine, PID_Config *config)
   } else  {
     /* line is far to the left or right: use backward motor motion */
     speed = ((int32_t)config->maxSpeedPercent)*(0xffff/100)*10/10; /* %80 */
+    pid = Limit(pid, -speed, speed);
     if (pid<0) { /* turn right */
       speedR = -speed+pid; /* decrease speed */
       speedL = speed-pid; /* increase speed */
@@ -428,8 +429,9 @@ uint8_t PID_ParseCommand(const unsigned char *cmd, bool *handled, const CLS1_Std
     if (res!=ERR_OK) {
       CLS1_SendStr((unsigned char*)"Loading from FLASH failed!\r\n", io->stdErr);
     }
-  }
 #endif
+  }
+
   return res;
 }
 #endif /* PL_HAS_SHELL */
@@ -455,11 +457,11 @@ void PID_Deinit(void) {
 
 void PID_Init(void) {
   /*! \todo determine your PID values */
-  config.speedLeftConfig.pFactor100 = 0;
-  config.speedLeftConfig.iFactor100 = 0;
-  config.speedLeftConfig.dFactor100 = 0;
-  config.speedLeftConfig.iAntiWindup = 0;
-  config.speedLeftConfig.maxSpeedPercent = 0;
+  config.speedLeftConfig.pFactor100 = 2500;
+  config.speedLeftConfig.iFactor100 = 100;
+  config.speedLeftConfig.dFactor100 = 3000;
+  config.speedLeftConfig.iAntiWindup = 100000;
+  config.speedLeftConfig.maxSpeedPercent = 40;
   config.speedLeftConfig.lastError = 0;
   config.speedLeftConfig.integral = 0;
 
@@ -467,22 +469,23 @@ void PID_Init(void) {
   config.speedRightConfig.iFactor100 = config.speedLeftConfig.iFactor100;
   config.speedRightConfig.dFactor100 = config.speedLeftConfig.dFactor100;
   config.speedRightConfig.iAntiWindup = config.speedLeftConfig.iAntiWindup;
+  config.speedRightConfig.maxSpeedPercent = config.speedLeftConfig.maxSpeedPercent;
   config.speedRightConfig.lastError = 0;
   config.speedRightConfig.integral = 0;
 
-  config.lineFwConfig.pFactor100 = 0;
+  config.lineFwConfig.pFactor100 = 2000;
   config.lineFwConfig.iFactor100 = 0;
-  config.lineFwConfig.dFactor100 = 0;
-  config.lineFwConfig.iAntiWindup = 0;
-  config.lineFwConfig.maxSpeedPercent = 0;
+  config.lineFwConfig.dFactor100 = 10;
+  config.lineFwConfig.iAntiWindup = 100000;
+  config.lineFwConfig.maxSpeedPercent = 40;
   config.lineFwConfig.lastError = 0;
   config.lineFwConfig.integral = 0;
 
-  config.posLeftConfig.pFactor100 = 0;
+  config.posLeftConfig.pFactor100 = 100;
   config.posLeftConfig.iFactor100 = 0;
-  config.posLeftConfig.dFactor100 = 0;
-  config.posLeftConfig.iAntiWindup = 0;
-  config.posLeftConfig.maxSpeedPercent = 0;
+  config.posLeftConfig.dFactor100 = 1000;
+  config.posLeftConfig.iAntiWindup = 100000;
+  config.posLeftConfig.maxSpeedPercent = 40;
   config.posLeftConfig.lastError = 0;
   config.posLeftConfig.integral = 0;
   config.posRightConfig.pFactor100 = config.posLeftConfig.pFactor100;

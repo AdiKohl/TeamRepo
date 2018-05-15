@@ -43,7 +43,7 @@
 #if PL_CONFIG_HAS_LINE_FOLLOW
   #include "LineFollow.h"
 #endif
-#if PL_CONFIG_HAS_LCD_MENU
+#if PL_CONFIG_HAS_LCD
   #include "LCD.h"
 #endif
 #if PL_CONFIG_HAS_SNAKE_GAME
@@ -52,7 +52,12 @@
 #if PL_CONFIG_HAS_REFLECTANCE
   #include "Reflectance.h"
 #endif
-#include "Sumo.h"
+#include "FRTOS1.h"
+
+#if PL_CONFIG_HAS_MOTOR
+bool MotorsRunning;
+bool MotorsSet;
+#endif
 
 #if PL_CONFIG_HAS_EVENTS
 
@@ -77,6 +82,21 @@ static void BtnMsg(int btn, const char *msg) {
 #endif
 }
 
+#if PL_CONFIG_HAS_MOTOR
+static void StartMotors(void) {
+	MOT_SetSpeedPercent(MOT_GetMotorHandle(MOT_MOTOR_LEFT), (MOT_SpeedPercent)15);
+	MOT_SetSpeedPercent(MOT_GetMotorHandle(MOT_MOTOR_RIGHT), (MOT_SpeedPercent)15);
+	MotorsRunning = TRUE;
+}
+
+static void StopMotors(void) {
+	MOT_SetSpeedPercent(MOT_GetMotorHandle(MOT_MOTOR_LEFT), (MOT_SpeedPercent)0);
+	MOT_SetSpeedPercent(MOT_GetMotorHandle(MOT_MOTOR_RIGHT), (MOT_SpeedPercent)0);
+	MotorsRunning = FALSE;
+	MotorsSet = FALSE;
+}
+#endif
+
 void APP_EventHandler(EVNT_Handle event) {
   /*! \todo handle events */
   switch(event) {
@@ -88,17 +108,149 @@ void APP_EventHandler(EVNT_Handle event) {
         WAIT1_Waitms(50);
       }
       LED1_Off();
+#if PL_CONFIG_HAS_BUZZER
+     BUZ_PlayTune(BUZ_TUNE_WELCOME);
+#endif
     }
   case EVNT_LED_HEARTBEAT:
     LED1_Neg();
-    LED2_Neg();
     break;
+
 #if PL_CONFIG_NOF_KEYS>=1
   case EVNT_SW1_PRESSED:
-    BtnMsg(1, "pressed");
-    LED1_Neg();
+     SHELL_SendString("Button 1 pressed!\r\n");
+#if PL_CONFIG_HAS_BUZZER
+     BUZ_PlayTune(BUZ_TUNE_BUTTON);
+#endif
+#if PL_CONFIG_HAS_MOTOR
+     if(MotorsRunning){
+          StopMotors();
+          }
+#endif
+#if PL_CONFIG_HAS_LCD
+     LCD_SetEvent(LCD_BTN_RIGHT);
+#endif
      break;
 #endif
+#if PL_CONFIG_NOF_KEYS>=1
+  case EVNT_SW1_LPRESSED:
+     SHELL_SendString("Button 1 long pressed!\r\n");
+#if PL_CONFIG_HAS_BUZZER
+     BUZ_PlayTune(BUZ_TUNE_BUTTON_LONG);
+
+#endif
+#if PL_CONFIG_HAS_MOTOR
+     MotorsSet=TRUE;
+
+#endif
+     break;
+#endif
+
+#if PL_CONFIG_NOF_KEYS>=1
+  case EVNT_SW1_RELEASED:
+     SHELL_SendString("Button 1 released!\r\n");
+#if PL_CONFIG_HAS_BUZZER
+     //BUZ_Beep(700, 100);
+#endif
+#if 0
+     if(MotorsSet){
+     WAIT1_WaitOSms(100);
+          StartMotors();
+     }
+
+#endif
+#if PL_CONFIG_HAS_LINE_FOLLOW
+     WAIT1_WaitOSms(100);
+     LF_StartFollowing();
+#endif
+     break;
+#endif
+
+
+#if PL_CONFIG_NOF_KEYS>=2
+  case EVNT_SW2_PRESSED:
+     SHELL_SendString("Button 2 pressed!\r\n");
+#if PL_CONFIG_HAS_LCD
+     LCD_SetEvent(LCD_BTN_LEFT);
+#endif
+     break;
+  case EVNT_SW2_LPRESSED:
+     SHELL_SendString("Button 2 long pressed!\r\n");
+     break;
+  case EVNT_SW2_RELEASED:
+     SHELL_SendString("Button 2 released!\r\n");
+     break;
+#endif
+
+#if PL_CONFIG_NOF_KEYS>=3
+  case EVNT_SW3_PRESSED:
+     SHELL_SendString("Button 3 pressed!\r\n");
+#if PL_CONFIG_HAS_LCD
+     LCD_SetEvent(LCD_BTN_DOWN);
+#endif
+     break;
+  case EVNT_SW3_LPRESSED:
+     SHELL_SendString("Button 3 long pressed!\r\n");
+     break;
+  case EVNT_SW3_RELEASED:
+     SHELL_SendString("Button 3 released!\r\n");
+     break;
+#endif
+
+#if PL_CONFIG_NOF_KEYS>=4
+  case EVNT_SW4_PRESSED:
+     SHELL_SendString("Button 4 pressed!\r\n");
+#if PL_CONFIG_HAS_LCD
+     LCD_SetEvent(LCD_BTN_CENTER);
+#endif
+     break;
+  case EVNT_SW4_LPRESSED:
+     SHELL_SendString("Button 4 long pressed!\r\n");
+     break;
+  case EVNT_SW4_RELEASED:
+     SHELL_SendString("Button 4 released!\r\n");
+     break;
+#endif
+
+#if PL_CONFIG_NOF_KEYS>=5
+  case EVNT_SW5_PRESSED:
+     SHELL_SendString("Button 5 pressed!\r\n");
+#if PL_CONFIG_HAS_LCD
+     LCD_SetEvent(LCD_BTN_UP);
+#endif
+     break;
+  case EVNT_SW5_LPRESSED:
+     SHELL_SendString("Button 5 long pressed!\r\n");
+     break;
+  case EVNT_SW5_RELEASED:
+     SHELL_SendString("Button 5 released!\r\n");
+     break;
+#endif
+
+#if PL_CONFIG_NOF_KEYS>=6
+  case EVNT_SW6_PRESSED:
+     SHELL_SendString("Button 6 pressed!\r\n");
+     break;
+  case EVNT_SW6_LPRESSED:
+     SHELL_SendString("Button 6 long pressed!\r\n");
+     break;
+  case EVNT_SW6_RELEASED:
+     SHELL_SendString("Button 6 released!\r\n");
+     break;
+#endif
+
+#if PL_CONFIG_NOF_KEYS>=7
+  case EVNT_SW7_PRESSED:
+     SHELL_SendString("Button 7 pressed!\r\n");
+     break;
+  case EVNT_SW7_LPRESSED:
+     SHELL_SendString("Button 7 long pressed!\r\n");
+     break;
+  case EVNT_SW7_RELEASED:
+     SHELL_SendString("Button 7 released!\r\n");
+     break;
+#endif
+
     default:
       break;
    } /* switch */
@@ -181,34 +333,86 @@ static void APP_AdoptToHardware(void) {
 #endif
 }
 
-void APP_Start(void) {
-  PL_Init();
-  KEY_Init();
-  APP_AdoptToHardware();
-  __asm volatile("cpsie i"); /* enable interrupts */
-
-
-
+static void Blinky(void *param) {
   for(;;) {
+	  LED1_Neg();
+    vTaskDelay(pdMS_TO_TICKS(500));
+  }
+}
 
 #if 0
-	  LED2_Off();
-	  LED1_On();
-	  WAIT1_Waitms(100);
-	  LED1_Off();
-	  LED2_On();
-	  WAIT1_Waitms(100);
-
+static void QuadTask(void *param){
+	for(;;){
+		Q4CLeft_Sample();
+		Q4CRight_Sample();
+		vTaskDelay(pdMS_TO_TICKS(1));
+	}
+}
 #endif
-	  KEY_Scan();
-	  EVNT_HandleEvent(APP_EventHandler,TRUE); //Call Event Handler
+
+
+static void MainTask(void *param){
+	for(;;){
+#if PL_CONFIG_HAS_KEYS
+  #if PL_CONFIG_HAS_DEBOUNCE
+    KEYDBNC_Process();
+  #else
+    KEY_Scan();
+  #endif
+#endif
+    EVNT_HandleEvent(APP_EventHandler, TRUE);
+#if PL_CONFIC_HAS_REFLECTANCE
+    if(REF_GetLineKind()!=REF_LINE_STRAIGHT){
+    	//StopMotors();
+    }
+#endif
+
+
+    vTaskDelay(pdMS_TO_TICKS(5));
+#if PL_CONFIG_HAS_LEDS && PL_CONFIG_NOF_LEDS>=3
+    LED3_On();
+    WAIT1_Waitms(100);
+    LED3_Off();
+#endif
+    __asm("nop");
+	}
+}
 
 
 
+void APP_Start(void) {
+  //int cntr = 0;
 
+  PL_Init();
+  APP_AdoptToHardware();
 
+  EVNT_SetEvent(EVNT_STARTUP);
+#if PL_CONFIG_HAS_SHELL
+  SHELL_SendString("Hello World!\r\n");
+#endif
 
-  }
+/* TASK CREATION */
+  /*! \todo Create tasks here */
+	  if (xTaskCreate(Blinky, "Blinky", 200/sizeof(StackType_t), NULL, tskIDLE_PRIORITY+1, NULL) != pdPASS) {
+	    for(;;){} /* error */
+	  }
+
+	  if (xTaskCreate(MainTask, "MainTask", 400/sizeof(StackType_t), NULL, tskIDLE_PRIORITY+1, NULL) != pdPASS) {
+	    for(;;){} /* error */
+	  }
+
+#if 0
+	  if (xTaskCreate(QuadTask, "QuadTask", 200/sizeof(StackType_t), NULL, tskIDLE_PRIORITY+4, NULL) != pdPASS) {
+	  	    for(;;){} /* error */
+	  	  }
+#endif
+
+/* START SCHEDULER*/
+  vTaskStartScheduler(); /* does usually not return */
+  for(;;) { /* just in case... */}
+
+  __asm volatile("cpsie i"); /* enable interrupts */
+
 }
 
 

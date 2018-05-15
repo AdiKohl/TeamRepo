@@ -28,6 +28,21 @@
 #endif
 /*! \todo Add additional includes as needed */
 
+#if 1
+static xQueueHandle LCD_Queue;
+#define LCD_QUEUE_LENGTH     5
+#define LCD_QUEUE_ITEM_SIZE  sizeof(LCD_BTN_Events)
+
+/*! \todo */
+void LCD_SetEvent(LCD_BTN_Events event) {
+  //if (!SNAKE_GameIsRunning() || event==LCD_REFRESH) {
+    if (xQueueSendToBack(LCD_Queue, &event, portMAX_DELAY)!=pdPASS) {
+      for(;;){} /* ups? */
+    }
+  //}
+}
+#endif
+
 /* status variables */
 static bool LedBackLightisOn = TRUE;
 static bool remoteModeIsOn = FALSE;
@@ -75,20 +90,7 @@ static struct {
 
 #endif
 
-#if 1
-static xQueueHandle LCD_Queue;
-#define LCD_QUEUE_LENGTH     5
-#define LCD_QUEUE_ITEM_SIZE  sizeof(LCD_BTN_Events)
 
-/*! \todo */
-void LCD_SetEvent(LCD_BTN_Events event) {
-  if (!SNAKE_GameIsRunning() || event==LCD_REFRESH) {
-    if (xQueueSendToBack(LCD_Queue, &event, portMAX_DELAY)!=pdPASS) {
-      for(;;){} /* ups? */
-    }
-  }
-}
-#endif
 
 static LCDMenu_StatusFlags ValueChangeHandler(const struct LCDMenu_MenuItem_ *item, LCDMenu_EventType event, void **dataP) {
   static int value = 0;
@@ -255,7 +257,7 @@ static const LCDMenu_MenuItem menus[] =
       {LCD_MENU_ID_TETRIS,                    2,   1,   LCD_MENU_ID_MAIN,         LCD_MENU_ID_NONE,                 "Tetris",     GamesMenuHandler,             LCDMENU_MENU_FLAGS_NONE},
       {LCD_MENU_ID_PONG,                      2,   2,   LCD_MENU_ID_MAIN,         LCD_MENU_ID_NONE,                 "Pong",       GamesMenuHandler,             LCDMENU_MENU_FLAGS_NONE},
 #endif
-#if 1
+#if 0
     {LCD_MENU_ID_ROBOT,                       0,   2,   LCD_MENU_ID_NONE,         LCD_MENU_ID_SUMO_START,           "Robot",        NULL,                       LCDMENU_MENU_FLAGS_NONE},
       {LCD_MENU_ID_SUMO_START,                4,   0,   LCD_MENU_ID_ROBOT,        LCD_MENU_ID_NONE,                 "Start",        RobotRemoteMenuHandler,     LCDMENU_MENU_FLAGS_NONE},
       {LCD_MENU_ID_SUMO_STOP,                 4,   1,   LCD_MENU_ID_ROBOT,        LCD_MENU_ID_NONE,                 "Stop",         RobotRemoteMenuHandler,     LCDMENU_MENU_FLAGS_NONE},
@@ -350,8 +352,57 @@ static void DrawText(void) {
   GDisp1_Clear();
   GDisp1_UpdateFull();
   PDC1_WriteLineStr(1, "hello");
-  vTaskDelay(pdMS_TO_TICKS(200));
+  vTaskDelay(pdMS_TO_TICKS(1000));
 }
+
+static void DrawTextTwo(void) {
+  GDisp1_Clear();
+  GDisp1_UpdateFull();
+
+#if 1
+  FDisp1_PixelDim x,y;
+
+  x=0;
+  y=0;
+  FDisp1_WriteString("Line 1!", GDisp1_COLOR_BLACK, &x, &y, GFONT1_GetFont());
+  GDisp1_UpdateFull();
+  vTaskDelay(pdMS_TO_TICKS(500));
+  x = 0;
+  y += GFONT1_GetBoxHeight();
+
+  FDisp1_WriteString("Line 2!", GDisp1_COLOR_BLACK, &x, &y, GFONT1_GetFont());
+  GDisp1_UpdateFull();
+  vTaskDelay(pdMS_TO_TICKS(500));
+  x = 0;
+  y += GFONT1_GetBoxHeight();
+
+  FDisp1_WriteString("Line 3!", GDisp1_COLOR_BLACK, &x, &y, GFONT1_GetFont());
+  GDisp1_UpdateFull();
+  vTaskDelay(pdMS_TO_TICKS(500));
+  x = 0;
+  y += GFONT1_GetBoxHeight();
+
+  FDisp1_WriteString("Line 4!", GDisp1_COLOR_BLACK, &x, &y, GFONT1_GetFont());
+  GDisp1_UpdateFull();
+  vTaskDelay(pdMS_TO_TICKS(1000));
+
+
+#endif
+
+
+
+#if 0 //Draw with DrawText
+  PDC1_WriteLineStr(1, "Line 1");
+  vTaskDelay(pdMS_TO_TICKS(200));
+  PDC1_WriteLineStr(2, "Line 2");
+  vTaskDelay(pdMS_TO_TICKS(200));
+  PDC1_WriteLineStr(3, "Line 3");
+  vTaskDelay(pdMS_TO_TICKS(200));
+  PDC1_WriteLineStr(4, "Line 4");
+  vTaskDelay(pdMS_TO_TICKS(1000));
+#endif
+}
+
 
 /*! \todo */
 static void DrawLines(void) {
@@ -382,16 +433,32 @@ static void DrawLines(void) {
   }
 }
 
+static void DrawCircles(void) {
+	int i;
+	GDisp1_Clear();
+	GDisp1_UpdateFull();
+
+	GDisp1_DrawCircle(10+i,10,5,GDisp1_COLOR_BLACK);
+	GDisp1_UpdateFull();
+	i++;
+
+	vTaskDelay(pdMS_TO_TICKS(1000));
+}
+
 static void LCD_Task(void *param) {
   (void)param; /* not used */
   vTaskDelay(pdMS_TO_TICKS(500)); /* wait for power-up */
 #if 1
   ShowTextOnLCD("Press a key!");
+#if 0
+  vTaskDelay(pdMS_TO_TICKS(500));
   DrawText();
   /* \todo extend */
   DrawFont();
+  DrawTextTwo();
   DrawLines(); /*! \todo */
-  //DrawCircles();
+  DrawCircles();
+#endif
 #endif
 #if PL_CONFIG_HAS_LCD_MENU
   LCDMenu_InitMenu(menus, sizeof(menus)/sizeof(menus[0]), 1);
@@ -403,6 +470,34 @@ static void LCD_Task(void *param) {
     } else {
       LCD_LED_Off(); /* LCD backlight off */
     }
+
+#if !PL_CONFIG_HAS_LCD_MENU
+    portBASE_TYPE res;
+    LCD_BTN_Events event;
+    res = xQueueReceive(LCD_Queue, &event, portMAX_DELAY);
+    if (res!=errQUEUE_EMPTY) {
+            if (event==LCD_REFRESH) {
+              requestLCDUpdate = TRUE;
+            }
+            if (event==LCD_BTN_LEFT) {
+                    ShowTextOnLCD("left");
+            }
+            if (event==LCD_BTN_RIGHT) {
+                    ShowTextOnLCD("right");
+            }
+            if (event==LCD_BTN_UP) {
+                    ShowTextOnLCD("up");
+            }
+            if (event==LCD_BTN_DOWN) {
+                    ShowTextOnLCD("down");
+            }
+            if (event==LCD_BTN_CENTER) {
+                    ShowTextOnLCD("center");
+            }
+          }
+#endif
+
+
 #if PL_CONFIG_HAS_LCD_MENU
     if (requestLCDUpdate) {
       requestLCDUpdate = FALSE;
@@ -420,23 +515,23 @@ static void LCD_Task(void *param) {
         }
         if (event==LCD_BTN_LEFT) {
           LCDMenu_OnEvent(LCDMENU_EVENT_LEFT, NULL);
-          //      ShowTextOnLCD("left");
+                //ShowTextOnLCD("left");
         }
         if (event==LCD_BTN_RIGHT) {
           LCDMenu_OnEvent(LCDMENU_EVENT_RIGHT, NULL);
-          //      ShowTextOnLCD("right");
+                //ShowTextOnLCD("right");
         }
         if (event==LCD_BTN_UP) {
           LCDMenu_OnEvent(LCDMENU_EVENT_UP, NULL);
-          //      ShowTextOnLCD("up");
+                //ShowTextOnLCD("up");
         }
         if (event==LCD_BTN_DOWN) {
           LCDMenu_OnEvent(LCDMENU_EVENT_DOWN, NULL);
-          //      ShowTextOnLCD("down");
+                //ShowTextOnLCD("down");
         }
         if (event==LCD_BTN_CENTER) {
           LCDMenu_OnEvent(LCDMENU_EVENT_ENTER, NULL);
-          //      ShowTextOnLCD("center");
+                //ShowTextOnLCD("center");
         }
       }
     }
@@ -491,7 +586,7 @@ void LCD_Init(void) {
   vQueueAddToRegistry(LCD_Queue, "LCDQueue");
 #endif
   LedBackLightisOn =  TRUE;
-  if (xTaskCreate(LCD_Task, "LCD", 700/sizeof(StackType_t), NULL, tskIDLE_PRIORITY, NULL) != pdPASS) {
+  if (xTaskCreate(LCD_Task, "LCD", 700/sizeof(StackType_t), NULL, tskIDLE_PRIORITY+1, NULL) != pdPASS) {
     for(;;){} /* error! probably out of memory */
   }
 #if PL_CONFIG_HAS_LCD_MENU

@@ -102,7 +102,7 @@ bool DRV_IsDrivingBackward(void) {
 }
 
 static bool match(int32_t pos, int32_t target) {
-  #define MATCH_MARGIN  10
+  #define MATCH_MARGIN  5
   return (pos>=target-MATCH_MARGIN && pos<=target+MATCH_MARGIN);
 }
 
@@ -370,7 +370,7 @@ void DRV_Init(void) {
     for(;;){} /* out of memory? */
   }
   FRTOS1_vQueueAddToRegistry(DRV_Queue, "Drive");
-  if (xTaskCreate(DriveTask, "Drive", 400/sizeof(StackType_t), NULL, tskIDLE_PRIORITY+3, NULL) != pdPASS) {
+  if (xTaskCreate(DriveTask, "Drive", 400/sizeof(StackType_t), NULL, tskIDLE_PRIORITY+1, NULL) != pdPASS) {
     for(;;){} /* error */
   }
 }

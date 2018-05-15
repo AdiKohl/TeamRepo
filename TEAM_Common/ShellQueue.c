@@ -23,6 +23,7 @@ static xQueueHandle SQUEUE_Queue;
 
 void SQUEUE_SendString(const unsigned char *str) {
   /*! \todo Understand usage of queues */
+
 #if PL_CONFIG_SQUEUE_SINGLE_CHAR
   while(*str!='\0') {
     if (xQueueSendToBack(SQUEUE_Queue, str, 100/portTICK_PERIOD_MS)!=pdPASS) {
